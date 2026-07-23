@@ -1,0 +1,14 @@
+{
+  "name": "ConversationExporter",
+  "description": "Select two messages in any text channel and copy or save the inclusive raw-message range as JSON.",
+  "authors": [
+    {
+      "name": "brainage04",
+      "id": "0"
+    }
+  ],
+  "main": "src/index.ts",
+  "vendetta": {
+    "icon": "DownloadIcon"
+  }
+}
