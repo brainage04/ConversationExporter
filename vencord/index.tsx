@@ -1,3 +1,9 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { copyToClipboard } from "@utils/clipboard";
 import type { PluginDef } from "@utils/types";
