@@ -241,7 +241,7 @@ function injectRangeActions(tree: unknown, message: { channel_id?: string; id?: 
             : undefined
     ].filter((row): row is NonNullable<typeof row> => Boolean(row));
 
-    rows.unshift(...additions);
+    rows.push(...additions);
 }
 
 function patchMessageActionSheet() {
