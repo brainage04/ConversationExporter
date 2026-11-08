@@ -65,7 +65,7 @@ export const plugin: PluginPage = {
   sections: [
     {
       title: 'Export format',
-      intro: 'The JSON file is one object (schema version 1):',
+      intro: 'The JSON file is one object:',
       items: [
         '`schemaVersion`: always `1`.',
         '`exportedAt`: when the export ran, as an ISO 8601 timestamp.',
