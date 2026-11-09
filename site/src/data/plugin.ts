@@ -77,7 +77,7 @@ export const plugin: PluginPage = {
       items: [
         'At most one history request a second.',
         'When Discord answers that you are sending too many requests, the export waits at least as long as Discord asks (and 2, 4, then 8 seconds at the least), and gives up with an error after 3 retries of the same page.',
-        'When Discord’s rate limit headers say no requests are left, the next request waits until they refill.',
+        'If your Discord client passes on Discord’s rate limit headers (Vesktop does not), the next request also waits until they say requests are available again.',
       ],
     },
     {
