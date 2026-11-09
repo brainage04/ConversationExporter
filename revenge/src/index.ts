@@ -1,3 +1,9 @@
+/*
+ * ConversationExporter
+ * Copyright (c) 2026 brainage04
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { find, findByProps } from "@vendetta/metro";
 import { React, ReactNative as RN, clipboard } from "@vendetta/metro/common";
 import { after, before } from "@vendetta/patcher";
