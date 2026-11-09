@@ -272,7 +272,11 @@ function injectRangeActions(tree: unknown, message: { channel_id?: string; id?: 
             : undefined,
         exporting
             ? createActionRow(template, "Cancel conversation export", () => {
-                exporting?.cancel();
+                if (!exporting) {
+                    showToast("The conversation export already finished");
+                    return;
+                }
+                exporting.cancel();
                 showToast("Cancelling the conversation export after the current request…");
             })
             : undefined,

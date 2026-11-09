@@ -99,7 +99,8 @@ async function exportSelectedRange(mode: "copy" | "save") {
         );
 
         if (mode === "copy") {
-            copyToClipboard(payload);
+            // Vesktop copies through the browser clipboard, which can refuse; only report success once it worked.
+            await copyToClipboard(payload);
             showToast({ text: `Copied ${messages.length} raw messages`, variant: "success" });
         } else {
             const filename = conversationExportFilename(range.channelId, exportedAt);
@@ -181,7 +182,11 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     label="Cancel export"
                     color="danger"
                     action={() => {
-                        exporting?.cancel();
+                        if (!exporting) {
+                            showToast({ text: "The conversation export already finished" });
+                            return;
+                        }
+                        exporting.cancel();
                         showToast({ text: "Cancelling the conversation export after the current request…" });
                     }}
                 />
