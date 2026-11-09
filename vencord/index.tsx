@@ -15,8 +15,7 @@ import {
     GuildStore,
     Menu,
     RestAPI,
-    showToast,
-    Toasts
+    showToast
 } from "@webpack/common";
 
 import {
@@ -65,16 +64,16 @@ function channelMetadata(channelId: string): ConversationChannelMetadata {
 async function exportSelectedRange(mode: "copy" | "save") {
     const range = selectedRange();
     if (!range) {
-        showToast("Select both range boundaries first", Toasts.Type.FAILURE);
+        showToast({ text: "Select both range boundaries first", variant: "critical" });
         return;
     }
     if (exporting) {
-        showToast("A conversation export is already running", Toasts.Type.MESSAGE);
+        showToast({ text: "A conversation export is already running" });
         return;
     }
 
     exporting = true;
-    showToast("Fetching the selected conversation range…", Toasts.Type.MESSAGE);
+    showToast({ text: "Fetching the selected conversation range…" });
     try {
         const messages = await fetchConversationRange(range, async (channelId, beforeMessageId, limit) => {
             const response = await RestAPI.get({
@@ -90,15 +89,15 @@ async function exportSelectedRange(mode: "copy" | "save") {
 
         if (mode === "copy") {
             copyToClipboard(payload);
-            showToast(`Copied ${messages.length} raw messages`, Toasts.Type.SUCCESS);
+            showToast({ text: `Copied ${messages.length} raw messages`, variant: "success" });
         } else {
             const filename = conversationExportFilename(range.channelId, exportedAt);
             saveFile(new File([payload], filename, { type: "application/json" }));
-            showToast(`Prepared ${messages.length} raw messages for saving`, Toasts.Type.SUCCESS);
+            showToast({ text: `Prepared ${messages.length} raw messages for saving`, variant: "success" });
         }
     } catch (error) {
         const reason = error instanceof Error ? error.message : "Unknown export error";
-        showToast(`Conversation export failed: ${reason}`, Toasts.Type.FAILURE);
+        showToast({ text: `Conversation export failed: ${reason}`, variant: "critical" });
     } finally {
         exporting = false;
     }
@@ -119,7 +118,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                 label="Set as range start"
                 action={() => {
                     selection = { channelId: channel.id, startMessageId: message.id };
-                    showToast("Conversation range start selected", Toasts.Type.SUCCESS);
+                    showToast({ text: "Conversation range start selected", variant: "success" });
                 }}
             />
             {sameChannel && (
@@ -128,7 +127,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     label="Set as range end"
                     action={() => {
                         selection = { ...selection!, endMessageId: message.id };
-                        showToast("Conversation range ready to export", Toasts.Type.SUCCESS);
+                        showToast({ text: "Conversation range ready to export", variant: "success" });
                     }}
                 />
             )}
@@ -153,7 +152,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     color="danger"
                     action={() => {
                         selection = undefined;
-                        showToast("Conversation range cleared", Toasts.Type.MESSAGE);
+                        showToast({ text: "Conversation range cleared" });
                     }}
                 />
             )}
