@@ -10,6 +10,7 @@ import type { PluginDef } from "@utils/types";
 import { saveFile } from "@utils/web";
 import type { Channel, Message } from "@vencord/discord-types";
 import {
+    Alerts,
     ChannelStore,
     Constants,
     GuildStore,
@@ -23,6 +24,9 @@ import {
     type ConversationChannelMetadata,
     conversationExportFilename,
     type ConversationRangeSelection,
+    EXPORT_LIMITS,
+    ExportCancellation,
+    ExportCancelledError,
     fetchConversationRange,
     serializeConversationExport
 } from "../common/exportRange";
@@ -34,7 +38,8 @@ interface SelectionState {
 }
 
 let selection: SelectionState | undefined;
-let exporting = false;
+/** The running export, if any. */
+let exporting: ExportCancellation | undefined;
 
 function selectedRange(): ConversationRangeSelection | undefined {
     if (!selection?.endMessageId) return;
@@ -72,16 +77,22 @@ async function exportSelectedRange(mode: "copy" | "save") {
         return;
     }
 
-    exporting = true;
+    const cancellation = new ExportCancellation();
+    exporting = cancellation;
     showToast({ text: "Fetching the selected conversation range…" });
     try {
-        const messages = await fetchConversationRange(range, async (channelId, beforeMessageId, limit) => {
-            const response = await RestAPI.get({
+        const messages = await fetchConversationRange(
+            range,
+            (channelId, beforeMessageId, limit) => RestAPI.get({
                 url: Constants.Endpoints.MESSAGES(channelId),
                 query: { before: beforeMessageId, limit }
-            });
-            return Array.isArray(response.body) ? response.body : [];
-        });
+            }),
+            {
+                cancellation,
+                confirmLargeExport,
+                onProgress: count => showToast({ text: `Fetched ${count.toLocaleString("en-US")} messages so far…` })
+            }
+        );
         const exportedAt = new Date();
         const payload = serializeConversationExport(
             buildConversationExport(channelMetadata(range.channelId), range, messages, exportedAt)
@@ -96,11 +107,30 @@ async function exportSelectedRange(mode: "copy" | "save") {
             showToast({ text: `Prepared ${messages.length} raw messages for saving`, variant: "success" });
         }
     } catch (error) {
+        if (error instanceof ExportCancelledError) {
+            showToast({ text: "Conversation export cancelled" });
+            return;
+        }
         const reason = error instanceof Error ? error.message : "Unknown export error";
         showToast({ text: `Conversation export failed: ${reason}`, variant: "critical" });
     } finally {
-        exporting = false;
+        if (exporting === cancellation) exporting = undefined;
     }
+}
+
+function confirmLargeExport(count: number) {
+    return new Promise<boolean>(resolve => {
+        Alerts.show({
+            title: "Large conversation export",
+            body: `The export has passed ${count.toLocaleString("en-US")} messages and is not done yet. It fetches about 100 messages a second and stops with an error at ${EXPORT_LIMITS.maxMessages.toLocaleString("en-US")}. Keep going?`,
+            confirmText: "Keep going",
+            cancelText: "Stop export",
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false),
+            // Closing the dialog any other way stops the export; a second resolve is ignored.
+            onCloseCallback: () => resolve(false)
+        });
+    });
 }
 
 const messageContextMenuPatch: NavContextMenuPatchCallback = (
@@ -145,6 +175,17 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     action={() => { void exportSelectedRange("save"); }}
                 />
             )}
+            {exporting && (
+                <Menu.MenuItem
+                    id="conversation-exporter-cancel"
+                    label="Cancel export"
+                    color="danger"
+                    action={() => {
+                        exporting?.cancel();
+                        showToast({ text: "Cancelling the conversation export after the current request…" });
+                    }}
+                />
+            )}
             {selection && (
                 <Menu.MenuItem
                     id="conversation-exporter-clear"
@@ -169,6 +210,7 @@ export const vencordPlugin = {
     },
     stop() {
         selection = undefined;
-        exporting = false;
+        exporting?.cancel();
+        exporting = undefined;
     }
 } satisfies Omit<PluginDef, "name">;

@@ -7,6 +7,7 @@
 import { find, findByProps } from "@vendetta/metro";
 import { React, ReactNative as RN, clipboard } from "@vendetta/metro/common";
 import { after, before } from "@vendetta/patcher";
+import { showConfirmationAlert } from "@vendetta/ui/alerts";
 import { showToast } from "@vendetta/ui/toasts";
 import { findInReactTree } from "@vendetta/utils";
 
@@ -15,7 +16,11 @@ import {
     type ConversationChannelMetadata,
     conversationExportFilename,
     type ConversationRangeSelection,
+    EXPORT_LIMITS,
+    ExportCancellation,
+    ExportCancelledError,
     fetchConversationRange,
+    type PageResponse,
     serializeConversationExport
 } from "../../common/exportRange";
 
@@ -37,7 +42,7 @@ interface RestClient {
         query?: Record<string, number | string>;
         retries?: number;
         url: string;
-    }): Promise<{ body?: unknown }>;
+    }): Promise<PageResponse>;
 }
 
 interface NativeFileManager {
@@ -72,7 +77,8 @@ const NativeFileModule = (
 ) as NativeFileManager | undefined;
 
 let selection: SelectionState | undefined;
-let exporting = false;
+/** The running export, if any. */
+let exporting: ExportCancellation | undefined;
 let actionSheetPoll: number | undefined;
 let unpatchLazy: (() => void) | undefined;
 const sheetUnpatches = new Set<() => void>();
@@ -130,17 +136,23 @@ async function exportSelectedRange(mode: "copy" | "save") {
         return;
     }
 
-    exporting = true;
+    const cancellation = new ExportCancellation();
+    exporting = cancellation;
     showToast("Fetching the selected conversation range…");
     try {
-        const messages = await fetchConversationRange(range, async (channelId, beforeMessageId, limit) => {
-            const response = await rest.get({
+        const messages = await fetchConversationRange(
+            range,
+            (channelId, beforeMessageId, limit) => rest.get({
                 url: `/channels/${channelId}/messages`,
                 query: { before: beforeMessageId, limit },
                 retries: 1
-            });
-            return Array.isArray(response?.body) ? response.body : [];
-        });
+            }),
+            {
+                cancellation,
+                confirmLargeExport,
+                onProgress: count => showToast(`Fetched ${count.toLocaleString("en-US")} messages so far…`)
+            }
+        );
         const exportedAt = new Date();
         const payload = serializeConversationExport(
             buildConversationExport(channelMetadata(range.channelId), range, messages, exportedAt)
@@ -158,11 +170,29 @@ async function exportSelectedRange(mode: "copy" | "save") {
             showToast(`Saved ${messages.length} raw messages to ${location || filename}`);
         }
     } catch (error) {
+        if (error instanceof ExportCancelledError) {
+            showToast("Conversation export cancelled");
+            return;
+        }
         const reason = error instanceof Error ? error.message : "Unknown export error";
         showToast(`Conversation export failed: ${reason}`);
     } finally {
-        exporting = false;
+        if (exporting === cancellation) exporting = undefined;
     }
+}
+
+function confirmLargeExport(count: number) {
+    return new Promise<boolean>(resolve => {
+        showConfirmationAlert({
+            title: "Large conversation export",
+            content: `The export has passed ${count.toLocaleString("en-US")} messages and is not done yet. It fetches about 100 messages a second and stops with an error at ${EXPORT_LIMITS.maxMessages.toLocaleString("en-US")}. Keep going?`,
+            confirmText: "Keep going",
+            cancelText: "Stop export",
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false),
+            isDismissable: false
+        });
+    });
 }
 
 interface ActionRowElement {
@@ -239,6 +269,12 @@ function injectRangeActions(tree: unknown, message: { channel_id?: string; id?: 
                 void exportSelectedRange("save");
             })
             : undefined,
+        exporting
+            ? createActionRow(template, "Cancel conversation export", () => {
+                exporting?.cancel();
+                showToast("Cancelling the conversation export after the current request…");
+            })
+            : undefined,
         selection
             ? createActionRow(template, "Clear selected conversation range", () => {
                 selection = undefined;
@@ -300,7 +336,8 @@ function onUnload() {
     for (const unpatch of sheetUnpatches) unpatch();
     sheetUnpatches.clear();
     selection = undefined;
-    exporting = false;
+    exporting?.cancel();
+    exporting = undefined;
 }
 
 export default { onLoad, onUnload };

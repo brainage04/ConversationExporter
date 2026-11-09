@@ -58,11 +58,28 @@ export const plugin: PluginPage = {
         title: 'Clear the selection',
         text: 'Clear selected range forgets both messages. Disabling the plugin clears them too.',
       },
+      {
+        title: 'Large exports',
+        text: 'History is fetched one page of 100 messages at a time, at most one request a second. Once an export passes 1,000 messages it stops and asks whether to keep going (a dialog on Vesktop, an alert on Revenge), then shows a short note for every further 1,000 messages. It never goes past 10,000 messages: a longer range ends with an error and nothing is copied or saved.',
+      },
+      {
+        title: 'Cancel an export',
+        text: 'While an export runs, the message menu has Cancel export (Cancel conversation export on Revenge). The export stops after the request that is running and nothing is copied or saved.',
+      },
     ],
   },
   settings: [],
   settingsNote: 'This plugin has no settings; everything happens from the message menu.',
   sections: [
+    {
+      title: 'Rate limits',
+      intro: 'The export waits for Discord rather than pushing through its limits:',
+      items: [
+        'At most one history request a second.',
+        'When Discord answers that you are sending too many requests, the export waits at least as long as Discord asks (and 2, 4, then 8 seconds at the least), and gives up with an error after 3 retries of the same page.',
+        'When Discord’s rate limit headers say no requests are left, the next request waits until they refill.',
+      ],
+    },
     {
       title: 'Export format',
       intro:

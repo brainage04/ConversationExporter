@@ -1,6 +1,6 @@
 # ConversationExporter
 
-A Discord plugin for Revenge (Android) and Vencord (Vesktop). Pick the first and last message of a conversation in any text channel or DM, then copy or save every message in between as JSON, exactly as Discord's API returns them.
+A Discord plugin for Revenge (Android) and Vencord (Vesktop). Pick the first and last message of a conversation in any text channel or DM, then copy or save every message in between as JSON, exactly as Discord's API returns them. History is fetched at about one request (100 messages) per second; an export asks before going past 1,000 messages, stops with an error past 10,000, and can be cancelled from the message menu.
 
 Page with the full description and install steps: <https://brainage04.github.io/ConversationExporter/>
 
