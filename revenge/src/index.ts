@@ -145,7 +145,8 @@ async function exportSelectedRange(mode: "copy" | "save") {
             (channelId, beforeMessageId, limit) => rest.get({
                 url: `/channels/${channelId}/messages`,
                 query: { before: beforeMessageId, limit },
-                retries: 1
+                // The export paces and retries itself; Discord's client must not add retries of its own.
+                retries: 0
             }),
             {
                 cancellation,
