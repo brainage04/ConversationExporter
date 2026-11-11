@@ -20,7 +20,6 @@ export interface Section {
 export interface PluginPage {
   /** GitHub repository name; also the Pages base path (`https://brainage04.github.io/<repository>/`). */
   repository: string;
-  summary: string;
   /** The Vencord entry file in the repository root. */
   vencordEntry: 'index.ts' | 'index.tsx';
   /** Folder name under Vencord's `src/userplugins/`, as in DiscordPluginInstaller's catalog. */
@@ -35,8 +34,6 @@ export interface PluginPage {
 
 export const plugin: PluginPage = {
   repository: 'ConversationExporter',
-  summary:
-    'Pick the first and last message of a conversation in any text channel or DM, then copy or save every message in between as JSON, exactly as Discord’s API returns them.',
   vencordEntry: 'index.ts',
   vencordDirectory: 'conversationExporter.vesktop',
   cards: {
