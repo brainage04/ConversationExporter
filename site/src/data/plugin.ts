@@ -20,6 +20,7 @@ export interface Section {
 export interface PluginPage {
   /** GitHub repository name; also the Pages base path (`https://brainage04.github.io/<repository>/`). */
   repository: string;
+  summary: string;
   /** The Vencord entry file in the repository root. */
   vencordEntry: 'index.ts' | 'index.tsx';
   /** Folder name under Vencord's `src/userplugins/`, as in DiscordPluginInstaller's catalog. */
@@ -34,6 +35,8 @@ export interface PluginPage {
 
 export const plugin: PluginPage = {
   repository: 'ConversationExporter',
+  summary:
+    'Pick the first and last message of a conversation in any text channel or DM, then copy or save every message in between as JSON, exactly as Discord’s API returns them.',
   vencordEntry: 'index.ts',
   vencordDirectory: 'conversationExporter.vesktop',
   cards: {
@@ -41,15 +44,15 @@ export const plugin: PluginPage = {
     items: [
       {
         title: 'Open the message menu',
-        text: 'On Vesktop, right-click a message and use the Conversation export group. On Revenge, long-press a message; the actions are added to its menu.',
+        text: 'On Vesktop, right-click a message and use the Conversation export group. On Revenge, long-press a message and use the actions added to its menu.',
       },
       {
         title: 'Select a range',
-        text: 'Mark one message as the range start and another in the same channel as the range end. The order does not matter; the export always runs from the older message to the newer one.',
+        text: 'Mark one message as the range start and another in the same channel as the range end. The order does not matter. The export always runs from the older message to the newer one.',
       },
       {
         title: 'Copy or save',
-        text: 'Copy the range to the clipboard, or save it as `discord-conversation-<channel id>-<time>.json`. Vesktop offers the file as a download; Revenge writes it to Discord’s documents folder and shows where.',
+        text: 'Copy the range to the clipboard, or save it as `discord-conversation-<channel id>-<time>.json`. Vesktop offers the file as a download. Revenge writes it to Discord’s documents folder and shows where.',
       },
       {
         title: 'Clear the selection',
@@ -66,7 +69,7 @@ export const plugin: PluginPage = {
     ],
   },
   settings: [],
-  settingsNote: 'This plugin has no settings; everything happens from the message menu.',
+  settingsNote: 'This plugin has no settings. Everything happens from the message menu.',
   sections: [
     {
       title: 'Rate limits',
