@@ -5,7 +5,9 @@
  */
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { showNotification } from "@api/Notifications";
 import { copyToClipboard } from "@utils/clipboard";
+import { Logger } from "@utils/Logger";
 import type { PluginDef } from "@utils/types";
 import { saveFile } from "@utils/web";
 import type { Channel, Message } from "@vencord/discord-types";
@@ -30,6 +32,18 @@ import {
     fetchConversationRange,
     serializeConversationExport
 } from "../common/exportRange";
+import { createNotifier } from "../common/notify";
+
+const logger = new Logger("ConversationExporter");
+const notify = createNotifier({
+    toast: showToast,
+    fallback: ({ text, variant }) => showNotification({
+        title: "Conversation Exporter",
+        body: text,
+        color: variant === "critical" ? "var(--red-360)" : variant === "success" ? "var(--green-360)" : undefined
+    }),
+    log: (message, error) => logger.error(message, error)
+});
 
 interface SelectionState {
     channelId: string;
@@ -69,17 +83,17 @@ function channelMetadata(channelId: string): ConversationChannelMetadata {
 async function exportSelectedRange(mode: "copy" | "save") {
     const range = selectedRange();
     if (!range) {
-        showToast({ text: "Select both range boundaries first", variant: "critical" });
+        notify({ text: "Select both range boundaries first", variant: "critical" });
         return;
     }
     if (exporting) {
-        showToast({ text: "A conversation export is already running" });
+        notify({ text: "A conversation export is already running" });
         return;
     }
 
     const cancellation = new ExportCancellation();
     exporting = cancellation;
-    showToast({ text: "Fetching the selected conversation range…" });
+    notify({ text: "Fetching the selected conversation range…" });
     try {
         const messages = await fetchConversationRange(
             range,
@@ -90,7 +104,7 @@ async function exportSelectedRange(mode: "copy" | "save") {
             {
                 cancellation,
                 confirmLargeExport,
-                onProgress: count => showToast({ text: `Fetched ${count.toLocaleString("en-US")} messages so far…` })
+                onProgress: count => notify({ text: `Fetched ${count.toLocaleString("en-US")} messages so far…` })
             }
         );
         const exportedAt = new Date();
@@ -101,19 +115,19 @@ async function exportSelectedRange(mode: "copy" | "save") {
         if (mode === "copy") {
             // Vesktop copies through the browser clipboard, which can refuse; only report success once it worked.
             await copyToClipboard(payload);
-            showToast({ text: `Copied ${messages.length} raw messages`, variant: "success" });
+            notify({ text: `Copied ${messages.length} raw messages`, variant: "success" });
         } else {
             const filename = conversationExportFilename(range.channelId, exportedAt);
             saveFile(new File([payload], filename, { type: "application/json" }));
-            showToast({ text: `Prepared ${messages.length} raw messages for saving`, variant: "success" });
+            notify({ text: `Prepared ${messages.length} raw messages for saving`, variant: "success" });
         }
     } catch (error) {
         if (error instanceof ExportCancelledError) {
-            showToast({ text: "Conversation export cancelled" });
+            notify({ text: "Conversation export cancelled" });
             return;
         }
         const reason = error instanceof Error ? error.message : "Unknown export error";
-        showToast({ text: `Conversation export failed: ${reason}`, variant: "critical" });
+        notify({ text: `Conversation export failed: ${reason}`, variant: "critical" });
     } finally {
         if (exporting === cancellation) exporting = undefined;
     }
@@ -149,7 +163,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                 label="Set as range start"
                 action={() => {
                     selection = { channelId: channel.id, startMessageId: message.id };
-                    showToast({ text: "Conversation range start selected", variant: "success" });
+                    notify({ text: "Conversation range start selected", variant: "success" });
                 }}
             />
             {sameChannel && (
@@ -158,7 +172,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     label="Set as range end"
                     action={() => {
                         selection = { ...selection!, endMessageId: message.id };
-                        showToast({ text: "Conversation range ready to export", variant: "success" });
+                        notify({ text: "Conversation range ready to export", variant: "success" });
                     }}
                 />
             )}
@@ -183,11 +197,11 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     color="danger"
                     action={() => {
                         if (!exporting) {
-                            showToast({ text: "The conversation export already finished" });
+                            notify({ text: "The conversation export already finished" });
                             return;
                         }
                         exporting.cancel();
-                        showToast({ text: "Cancelling the conversation export after the current request…" });
+                        notify({ text: "Cancelling the conversation export after the current request…" });
                     }}
                 />
             )}
@@ -198,7 +212,7 @@ const messageContextMenuPatch: NavContextMenuPatchCallback = (
                     color="danger"
                     action={() => {
                         selection = undefined;
-                        showToast({ text: "Conversation range cleared" });
+                        notify({ text: "Conversation range cleared" });
                     }}
                 />
             )}
